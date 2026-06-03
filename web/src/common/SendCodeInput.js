@@ -21,10 +21,56 @@ import * as Setting from "../Setting";
 import {SafetyOutlined} from "@ant-design/icons";
 import {CaptchaModal} from "./modal/CaptchaModal";
 
+function normalizeOtp(raw, expectedLen = 6) {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.length === expectedLen * 2) {
+    const half = digits.slice(0, expectedLen);
+    if (`${half}${half}` === digits) {
+      return half;
+    }
+  }
+
+  return digits.slice(0, expectedLen);
+}
+
 export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, textBefore, onChange, onButtonClickArgs, application, method, countryCode, refreshCaptcha}) => {
   const [visible, setVisible] = React.useState(false);
   const [buttonLeftTime, setButtonLeftTime] = React.useState(0);
   const [buttonLoading, setButtonLoading] = React.useState(false);
+  const inputRef = React.useRef(null);
+  const syncTimerRef = React.useRef(null);
+  const expectedCodeLength = 6;
+
+  const handleCodeChange = React.useCallback((raw) => {
+    const normalizedCode = normalizeOtp(raw, expectedCodeLength);
+    if (normalizedCode !== value) {
+      onChange(normalizedCode);
+    }
+  }, [onChange, expectedCodeLength, value]);
+
+  const scheduleSyncFromDom = React.useCallback(() => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+    }
+
+    // iOS/WebView autofill can update the native input before React's controlled value updates.
+    syncTimerRef.current = setTimeout(() => {
+      const rawValue = inputRef.current?.input?.value ?? "";
+      handleCodeChange(rawValue);
+    }, 30);
+  }, [handleCodeChange]);
+
+  React.useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, []);
 
   const getCodeResendTimeout = () => {
     // Use application's codeResendTimeout if available, otherwise default to 60 seconds
@@ -133,13 +179,18 @@ export const SendCodeInput = ({value, disabled, captchaValue, useInlineCaptcha, 
     <React.Fragment>
       <Space.Compact style={{width: "100%"}}>
         <Input
+          ref={inputRef}
           addonBefore={textBefore}
           disabled={disabled}
           value={value}
           prefix={<SafetyOutlined />}
           placeholder={i18next.t("code:Enter your code")}
           className="verification-code-input"
-          onChange={e => onChange(e.target.value)}
+          maxLength={expectedCodeLength}
+          inputMode="numeric"
+          onChange={e => handleCodeChange(e.target.value)}
+          onInput={scheduleSyncFromDom}
+          onFocus={scheduleSyncFromDom}
           autoComplete="one-time-code"
         />
         <Button style={{fontSize: 14}} type={"primary"} disabled={disabled || buttonLeftTime > 0} loading={buttonLoading} onClick={handleSearch}>

@@ -1,27 +1,25 @@
-version: '3.1'
+version: "3.8"
+
 services:
   casdoor:
-    restart: always
     build:
       context: ./
       dockerfile: Dockerfile
       target: STANDARD
+    image: casdoor-custom:latest
+    container_name: casdoor
     entrypoint: /bin/sh -c './server --createDatabase=true'
     ports:
-      - "8000:8000"
-    depends_on:
-      - db
+      - "8002:8000"
     environment:
-      RUNNING_IN_DOCKER: "true"
+      - RUNNING_IN_DOCKER=true
     volumes:
-      - ./conf:/conf/
-  db:
-    restart: always
-    image: mysql:8.0.25
-    platform: linux/amd64
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: 123456
-    volumes:
-      - /usr/local/docker/mysql:/var/lib/mysql
+      - ./conf:/conf
+      - ./data:/data
+    restart: unless-stopped
+    networks:
+      - haina-net
+
+networks:
+  haina-net:
+    external: true
