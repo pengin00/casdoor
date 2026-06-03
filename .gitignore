@@ -36,3 +36,4 @@ server
 
 # include helm-chart
 !manifests/casdoor
+scripts/mysql/casdoor_init_1.sql
