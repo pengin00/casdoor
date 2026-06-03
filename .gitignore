@@ -37,3 +37,5 @@ server
 # include helm-chart
 !manifests/casdoor
 scripts/mysql/casdoor_init_1.sql
+scripts/.DS_Store
+scripts/mysql/.DS_Store
